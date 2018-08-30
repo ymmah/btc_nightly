@@ -1,11 +1,17 @@
 os:
-  - osx
+  - linux
+language: minimal
 env:
   global:
   matrix:
+addons:
+  apt:
+    packages:
+    - valgrind
+before_install:
+    - pyenv global 2.7 3.6
 install:
-    - HOMEBREW_NO_AUTO_UPDATE=1 brew install python3 coreutils
-    - pip3 install pyzmq
+    - pip3 install pyzmq --user
 before_script:
     - git clone https://github.com/bitcoin/bitcoin.git --depth 1
     - cd bitcoin
@@ -14,7 +20,9 @@ before_script:
     - python3 ./download_latest_nightly.py | tee ./output
     - export BUILDDIR=$(tail -1 ./output)
 script:
-    - ${BUILDDIR}/src/test_bitcoin
+    - cd $SRCDIR && cat ../test_valgrind.patch | git apply && cd ..
+    - ${SRCDIR}/test/functional/test_runner.py wallet_disable
+    - ${BUILDDIR}/src/test_bitcoin --list_content 2>&1 >/dev/null | grep -e '^\S' | sed 's/*$//g' | xargs -n 1 -P 4 valgrind ${BUILDDIR}/src/test_bitcoin -t
     - ${SRCDIR}/test/util/bitcoin-util-test.py -v
     - ${SRCDIR}/test/functional/test_runner.py --extended --coverage -x feature_pruning,feature_dbcrash,wallet_backup,feature_block
 after_script:

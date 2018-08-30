@@ -1,0 +1,57 @@
+diff --git a/test/functional/test_framework/test_node.py b/test/functional/test_framework/test_node.py
+index 50942aec40..ff66881cc8 100755
+--- a/test/functional/test_framework/test_node.py
++++ b/test/functional/test_framework/test_node.py
+@@ -29,6 +29,9 @@ from .util import (
+ # For Python 3.4 compatibility
+ JSONDecodeError = getattr(json, "JSONDecodeError", ValueError)
+ 
++import os
++VALGRIND_SUPP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'contrib', 'valgrind.supp')
++
+ BITCOIND_PROC_WAIT_TIMEOUT = 60
+ 
+ 
+@@ -76,6 +79,9 @@ class TestNode():
+         # Note that common args are set in the config file (see initialize_datadir)
+         self.extra_args = extra_args
+         self.args = [
++            'valgrind',
++            '--suppressions={}'.format(VALGRIND_SUPP_FILE),
++            '--gen-suppressions=all',
+             self.binary,
+             "-datadir=" + self.datadir,
+             "-logtimemicros",
+@@ -354,7 +360,7 @@ class TestNodeCLI():
+         pos_args = [str(arg).lower() if type(arg) is bool else str(arg) for arg in args]
+         named_args = [str(key) + "=" + str(value) for (key, value) in kwargs.items()]
+         assert not (pos_args and named_args), "Cannot use positional arguments and named arguments in the same bitcoin-cli call"
+-        p_args = [self.binary, "-datadir=" + self.datadir] + self.options
++        p_args = ['valgrind', '--suppressions={}'.format(VALGRIND_SUPP_FILE), self.binary, "-datadir=" + self.datadir] + self.options
+         if named_args:
+             p_args += ["-named"]
+         if command is not None:
+diff --git a/test/util/bitcoin-util-test.py b/test/util/bitcoin-util-test.py
+index 16371a6234..08c4e60c61 100755
+--- a/test/util/bitcoin-util-test.py
++++ b/test/util/bitcoin-util-test.py
+@@ -25,6 +25,10 @@ import pprint
+ import subprocess
+ import sys
+ 
++import os
++VALGRIND_SUPP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'contrib', 'valgrind.supp')
++
++
+ def main():
+     config = configparser.ConfigParser()
+     config.optionxform = str
+@@ -79,7 +83,7 @@ def bctest(testDir, testObj, buildenv):
+     # Get the exec names and arguments
+     execprog = os.path.join(buildenv["BUILDDIR"], "src", testObj["exec"] + buildenv["EXEEXT"])
+     execargs = testObj['args']
+-    execrun = [execprog] + execargs
++    execrun = ['valgrind', '--suppressions={}'.format(VALGRIND_SUPP_FILE), execprog] + execargs
+ 
+     # Read the input data (if there is any)
+     stdinCfg = None
